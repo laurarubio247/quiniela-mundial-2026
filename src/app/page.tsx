@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -17,13 +19,19 @@ export default function Home() {
 
         <div className="mt-12 flex flex-col gap-4 sm:flex-row">
 
-          <button className="rounded-xl bg-amber-400 px-8 py-4 font-semibold text-slate-950 transition hover:scale-105 hover:bg-amber-300">
+          <Link
+            href="/login"
+            className="rounded-xl bg-amber-400 px-8 py-4 font-semibold text-slate-950 transition hover:scale-105 hover:bg-amber-300"
+          >
             Iniciar sesión
-          </button>
+          </Link>
 
-          <button className="rounded-xl border border-slate-700 px-8 py-4 font-semibold transition hover:border-amber-400 hover:bg-slate-900">
+          <Link
+            href="/register"
+            className="rounded-xl border border-slate-700 px-8 py-4 font-semibold transition hover:border-amber-400 hover:bg-slate-900"
+          >
             Registrarme
-          </button>
+          </Link>
 
         </div>
 
