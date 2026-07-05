@@ -1,0 +1,18 @@
+export const banderas: Record<string, string> = {
+  "Canadá": "🇨🇦",
+  "Marruecos": "🇲🇦",
+  "Paraguay": "🇵🇾",
+  "Francia": "🇫🇷",
+  "Brasil": "🇧🇷",
+  "Noruega": "🇳🇴",
+  "México": "🇲🇽",
+  "Inglaterra": "🇬🇧",
+  "Portugal": "🇵🇹",
+  "España": "🇪🇸",
+  "Estados Unidos": "🇺🇸",
+  "Bélgica": "🇧🇪",
+  "Argentina": "🇦🇷",
+  "Egipto": "🇪🇬",
+  "Suiza": "🇨🇭",
+  "Colombia": "🇨🇴",
+};
