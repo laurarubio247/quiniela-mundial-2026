@@ -1,99 +1,172 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import MatchCardAdmin from "./MatchCardAdmin";
 
-export default function LoginPage() {
-  const router = useRouter();
+type Profile = {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  paid: boolean | null;
+  is_admin: boolean;
+};
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+type Match = {
+  id: string;
+  home_team: string;
+  away_team: string;
+  kickoff: string;
+  manual_unlock: boolean;
+  finished: boolean;
+  home_score: number | null;
+  away_score: number | null;
+};
 
-  async function handleSubmit(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
+export default function AdminPage() {
+  const [loading, setLoading] = useState(true);
 
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
     setLoading(true);
 
-    const {
-      data,
-      error,
-    } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setLoading(false);
-      alert(error.message);
-      return;
-    }
-
-    const { data: profile } = await supabase
+    const { data: perfiles } = await supabase
       .from("profiles")
-      .select("is_admin")
-      .eq("id", data.user.id)
-      .single();
+      .select("*")
+      .order("display_name");
+
+    const { data: partidos } = await supabase
+      .from("matches")
+      .select("*")
+      .order("kickoff");
+
+    setProfiles((perfiles ?? []) as Profile[]);
+    setMatches((partidos ?? []) as Match[]);
 
     setLoading(false);
+  }
 
-    if (profile?.is_admin) {
-      router.push("/admin");
-    } else {
-      router.push("/dashboard");
-    }
+  async function togglePago(
+    id: string,
+    pagado: boolean | null
+  ) {
+    await supabase
+      .from("profiles")
+      .update({
+        paid: !pagado,
+      })
+      .eq("id", id);
 
-    router.refresh();
+    cargarDatos();
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#090B1F] flex items-center justify-center text-white text-2xl">
+        Cargando panel...
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#090B1F]">
+    <main className="min-h-screen bg-[#090B1F] text-white">
 
-      <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-[#13182A] p-8">
+      <div className="max-w-7xl mx-auto p-10">
 
-        <h1 className="mb-2 text-3xl font-bold text-white">
-          Iniciar sesión
+        <h1 className="text-5xl font-bold mb-12">
+          👑 Panel de Administración
         </h1>
 
-        <p className="mb-8 text-gray-400">
-          Quiniela Mundial 2026
-        </p>
+        <section className="mb-16">
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5"
-        >
+          <h2 className="text-3xl font-bold mb-6">
+            Participantes
+          </h2>
 
-          <input
-            type="email"
-            placeholder="Correo electrónico"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full rounded-lg bg-[#1C2238] p-3 text-white"
-          />
+          <div className="space-y-4">
 
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full rounded-lg bg-[#1C2238] p-3 text-white"
-          />
+            {profiles.map((profile) => (
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-yellow-500 py-3 font-bold text-black hover:bg-yellow-400 disabled:opacity-50"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
+              <div
+                key={profile.id}
+                className="rounded-xl bg-slate-900 p-5 flex items-center justify-between"
+              >
 
-        </form>
+                <div>
+
+                  <p className="text-xl font-bold">
+                    {profile.display_name ?? "Sin nombre"}
+                  </p>
+
+                  <p className="text-gray-400">
+                    {profile.email}
+                  </p>
+
+                  {profile.is_admin && (
+                    <p className="text-yellow-400 mt-1">
+                      Administrador
+                    </p>
+                  )}
+
+                </div>
+
+                <button
+                  onClick={() =>
+                    togglePago(profile.id, profile.paid)
+                  }
+                  className={`rounded-lg px-5 py-3 font-bold ${
+                    profile.paid
+                      ? "bg-green-600"
+                      : "bg-red-600"
+                  }`}
+                >
+                  {profile.paid
+                    ? "Pagó"
+                    : "No pagó"}
+                </button>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </section>
+
+        <section>
+
+          <h2 className="text-3xl font-bold mb-6">
+            Partidos
+          </h2>
+
+          <div className="space-y-6">
+
+            {matches.map((match) => (
+
+              <MatchCardAdmin
+                key={match.id}
+                id={match.id}
+                homeTeam={match.home_team}
+                awayTeam={match.away_team}
+                kickoff={match.kickoff}
+                manualUnlock={match.manual_unlock}
+                finished={match.finished}
+                homeScore={match.home_score}
+                awayScore={match.away_score}
+                onRefresh={cargarDatos}
+              />
+
+            ))}
+
+          </div>
+
+        </section>
 
       </div>
 

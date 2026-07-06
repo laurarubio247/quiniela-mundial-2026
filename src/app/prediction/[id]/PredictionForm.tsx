@@ -20,14 +20,27 @@ export default function PredictionForm({
 }: Props) {
   const [home, setHome] = useState("");
   const [away, setAway] = useState("");
+  const [penaltyWinner, setPenaltyWinner] = useState<
+    "home" | "away" | null
+  >(null);
+
   const [loading, setLoading] = useState(false);
 
-  const partidoIniciado = new Date() >= new Date(matchKickoff);
-  const bloqueado = partidoIniciado && !manualUnlock;
+  const partidoIniciado =
+    new Date() >= new Date(matchKickoff);
+
+  const bloqueado =
+    partidoIniciado && !manualUnlock;
 
   useEffect(() => {
     cargarPrediccion();
   }, []);
+
+  useEffect(() => {
+    if (home !== away) {
+      setPenaltyWinner(null);
+    }
+  }, [home, away]);
 
   async function cargarPrediccion() {
     const {
@@ -43,15 +56,34 @@ export default function PredictionForm({
       .eq("match_id", matchId)
       .maybeSingle();
 
-    if (data) {
-      setHome(String(data.home_prediction));
-      setAway(String(data.away_prediction));
+    if (!data) return;
+
+    setHome(String(data.home_prediction));
+    setAway(String(data.away_prediction));
+
+    if (
+      data.penalty_winner === "home" ||
+      data.penalty_winner === "away"
+    ) {
+      setPenaltyWinner(data.penalty_winner);
     }
   }
 
   async function guardarPronostico() {
     if (bloqueado) {
-      alert("Los pronósticos para este partido ya fueron cerrados.");
+      alert(
+        "Los pronósticos para este partido ya fueron cerrados."
+      );
+      return;
+    }
+
+    if (
+      home === away &&
+      penaltyWinner === null
+    ) {
+      alert(
+        "Selecciona quién gana en penales."
+      );
       return;
     }
 
@@ -62,27 +94,33 @@ export default function PredictionForm({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      alert("Debes iniciar sesión.");
       setLoading(false);
       return;
     }
 
-    const { data: existente } = await supabase
-      .from("predictions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("match_id", matchId)
-      .maybeSingle();
+    const { data: existente } =
+      await supabase
+        .from("predictions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("match_id", matchId)
+        .maybeSingle();
 
     let error = null;
+
+    const payload = {
+      home_prediction: Number(home),
+      away_prediction: Number(away),
+      penalty_winner:
+        home === away
+          ? penaltyWinner
+          : null,
+    };
 
     if (existente) {
       const res = await supabase
         .from("predictions")
-        .update({
-          home_prediction: Number(home),
-          away_prediction: Number(away),
-        })
+        .update(payload)
         .eq("id", existente.id);
 
       error = res.error;
@@ -92,9 +130,8 @@ export default function PredictionForm({
         .insert({
           user_id: user.id,
           match_id: matchId,
-          home_prediction: Number(home),
-          away_prediction: Number(away),
           points: 0,
+          ...payload,
         });
 
       error = res.error;
@@ -113,7 +150,8 @@ export default function PredictionForm({
   return (
     <div className="mt-8">
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
+
         <span className="text-2xl font-semibold">
           {homeTeam}
         </span>
@@ -123,12 +161,16 @@ export default function PredictionForm({
           min={0}
           value={home}
           disabled={bloqueado}
-          onChange={(e) => setHome(e.target.value)}
+          onChange={(e) =>
+            setHome(e.target.value)
+          }
           className="w-20 rounded-lg bg-slate-800 p-3 text-center text-2xl disabled:opacity-40"
         />
+
       </div>
 
-      <div className="flex items-center justify-between mb-10">
+      <div className="mb-8 flex items-center justify-between">
+
         <span className="text-2xl font-semibold">
           {awayTeam}
         </span>
@@ -138,15 +180,67 @@ export default function PredictionForm({
           min={0}
           value={away}
           disabled={bloqueado}
-          onChange={(e) => setAway(e.target.value)}
+          onChange={(e) =>
+            setAway(e.target.value)
+          }
           className="w-20 rounded-lg bg-slate-800 p-3 text-center text-2xl disabled:opacity-40"
         />
+
       </div>
+            {home !== "" &&
+        away !== "" &&
+        Number(home) === Number(away) && (
+
+          <div className="mb-8 rounded-xl bg-slate-800 p-5">
+
+            <p className="mb-4 text-lg font-semibold">
+              ¿Quién avanza en penales?
+            </p>
+
+            <label className="mb-3 flex cursor-pointer items-center gap-3">
+
+              <input
+                type="radio"
+                name="winner"
+                checked={penaltyWinner === "home"}
+                onChange={() =>
+                  setPenaltyWinner("home")
+                }
+                disabled={bloqueado}
+              />
+
+              <span className="text-lg">
+                Gana {homeTeam}
+              </span>
+
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-3">
+
+              <input
+                type="radio"
+                name="winner"
+                checked={penaltyWinner === "away"}
+                onChange={() =>
+                  setPenaltyWinner("away")
+                }
+                disabled={bloqueado}
+              />
+
+              <span className="text-lg">
+                Gana {awayTeam}
+              </span>
+
+            </label>
+
+          </div>
+
+      )}
 
       <button
         onClick={guardarPronostico}
         disabled={loading || bloqueado}
-        className="w-full rounded-xl bg-yellow-500 py-4 text-xl font-bold text-black hover:bg-yellow-400 disabled:opacity-40"
+        className="w-full rounded-xl bg-yellow-500 py-4 text-xl font-bold text-black transition hover:bg-yellow-400 disabled:opacity-40"
       >
         {bloqueado
           ? "Pronósticos cerrados"

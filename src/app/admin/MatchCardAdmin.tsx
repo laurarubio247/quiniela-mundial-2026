@@ -55,20 +55,29 @@ export default function MatchCardAdmin({
   }
 
   async function toggleUnlock() {
-    const { error } = await supabase
-      .from("matches")
-      .update({
-        manual_unlock: !manualUnlock,
-      })
-      .eq("id", id);
+  console.log("CLICK");
+  alert("Entró a toggleUnlock");
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
+  const { data, error } = await supabase
+    .from("matches")
+    .update({
+      manual_unlock: !manualUnlock,
+    })
+    .eq("id", id)
+    .select();
 
-    onRefresh();
+  console.log(data);
+  console.log(error);
+
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  alert("Actualizado");
+
+  onRefresh();
+}
 
   return (
     <div className="rounded-xl bg-slate-900 p-6">
